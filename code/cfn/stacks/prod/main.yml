@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn driver template to deploy shochiku resources
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://shochiku-app-prod-ap-northeast-1-239715580977.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path
+Resources:
+  s3CodePipelineArtifactsBucket:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/s3/s3-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: codepipeline-artifacts
+        s3BucketName: !Sub "${project}-${env}-codepipelineartifacts-${AWS::Region}-${AWS::AccountId}"
+        s3ObjectOwnership: BucketOwnerPreferred #BucketOwnerEnforced/ObjectWriter/BucketOwnerPreferred
+        s3EnableAcl: no #yes/no
+        s3AccessControl: Private #Private/BucketOwnerFullControl/PublicReadWrite/LogDeliveryWrite/etc..
+        s3EnableBucketEncryption: yes #yes/no 
+        s3KmsKeyArn: ""
+  iam:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/iam/iam-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        ec2InstanceRoleName: !Sub "${project}-${env}-${app}-ec2InstanceRole"
+        ec2InstancePolicyName: !Sub "${project}-${env}-${app}-ec2InstancePolicy"
+        ec2InstanceIamProfileName: !Sub "${project}-${env}-${app}-ec2InstanceProfile"
+        codeDeployRoleName: !Sub "${project}-${env}-${app}-codeDeployRole"
+        codeDeployPolicyName: !Sub "${project}-${env}-${app}-codeDeployPolicy"
+        codeDeployIamProfileName: !Sub "${project}-${env}-${app}-codeDeployProfile"
+        codePipelineRoleName: !Sub "${project}-${env}-${app}-codePipelineRole"
+        codePipelinePolicyName: !Sub "${project}-${env}-${app}-codePipelinePolicy"
+        codePipelineIamProfileName: !Sub "${project}-${env}-${app}-codePipelineProfile"
+  codeDeploy:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${s3ArtifactPath}/codeDeploy/codeDeploy-app.yml'
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: deploymentGroup
+        authorName: uzair
+        codeDeployApplicationName: !Sub "${project}-${env}-application-${AWS::Region}--${AWS::AccountId}"
+        codeDeployDeploymentConfigName: CodeDeployDefault.OneAtATime
+        codeDeployDeploymentGroupName: !Sub "${project}-${env}-deploymentGroup-${AWS::Region}--${AWS::AccountId}"
+        codeDeployServiceRoleArn: !GetAtt iam.Outputs.codeDeployRoleArn
+        codeDeployDeploymentType: IN_PLACE
+        codeDeployDeploymentOption: WITHOUT_TRAFFIC_CONTROL
+        codeDeployEc2TagFiltersKey: name
+        codeDeployEc2TagFiltersValue: codeDeployInstance
+        codeDeployEc2TagFiltersType: KEY_AND_VALUE
+  codePipeline:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${s3ArtifactPath}/codePipeline/codePipeline-app.yml'
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        codeCommitRepoName: !Sub "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}"
+        codeCommitRepoBranchName: feature-shochiku
+        codePipelineS3BucketName: !GetAtt s3CodePipelineArtifactsBucket.Outputs.s3Bucket
+        codePipelineServiceRoleArn: !GetAtt iam.Outputs.codePipelineRoleArn
+        codeDeployDeploymentGroup: !GetAtt codeDeploy.Outputs.codeDeployDeploymentGroup
+        codeDeployApplication: !GetAtt codeDeploy.Outputs.codeDeployApplication
+Outputs:
+  s3CodePipelineArtifactsBucket:
+    Description: CodePipelien Artifacts bucket name
+    Value: !Ref s3CodePipelineArtifactsBucket
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codepipeline-artifacts-${AWS::StackName}-${AWS::Region}"
+  iam:
+    Description: IAM policies, roles and instance profiles
+    Value: !Ref iam
+    Export:
+      Name: !Sub "${project}-${env}-${app}-iam-${AWS::StackName}-${AWS::Region}"
+  codeDeploy:
+    Description: Code deploy application and deployment group
+    Value: !Ref codeDeploy
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codeDeploy-${AWS::StackName}-${AWS::Region}"
+  codePipeline:
+    Description: CodePipeline
+    Value: !Ref codePipeline
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codePipeline-${AWS::StackName}-${AWS::Region}"

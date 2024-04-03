@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn template to deploy s3 bucket
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String  
+    Default: dev
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  s3BucketName:
+    Type: String
+    Description: Name of the S3 bucket
+  s3ObjectOwnership:
+    Type: String
+    Default: ObjectWriter
+    AllowedValues: [BucketOwnerEnforced, ObjectWriter, BucketOwnerPreferred]
+    Description: S3 object ownership rule to simplify the access management
+  s3EnableAcl:
+    Type: String
+    Default: no
+    AllowedValues: [yes, no]
+    Description: Specify whether to enable the S3 bucket access control list or not
+  s3AccessControl:
+    Type: String
+    Default: Private
+    AllowedValues: 
+      - Private
+      - PublicRead
+      - PublicReadWrite
+      - AwsExecRead
+      - AuthenticatedRead
+      - BucketOwnerRead
+      - BucketOwnerFullControl
+      - LogDeliveryWrite
+    Description: Access control list to grant S3 permissions (applicable iff S3 ACL is enabled)
+  s3EnableBucketEncryption:
+    Type: String
+    Default: yes
+    AllowedValues: [yes, no]
+    Description: Specify whether to enable S3 bucket encryption or not
+  s3KmsKeyArn:
+    Type: String
+    Default: ""
+    Description: Specify KMS key ARN for s3 encryption (applicable iff S3 bucket encryption is enabled)
+  s3EnableVersioning:
+    Type: String
+    Default: Enabled
+    AllowedValues: [Enabled, Suspended]
+    Description: Enable S3 versioning
+Conditions: 
+  isS3BucketName: !Not [!Equals [!Ref s3BucketName, ""]]
+  isEnableS3Acl: !Equals [!Ref s3EnableAcl, yes]  
+  isEnableBucketEncryption: !Equals [!Ref s3EnableBucketEncryption, yes]
+  isUseKMSEncryption: !Not [!Equals [!Ref s3KmsKeyArn, ""]]
+Resources:
+  s3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - isS3BucketName   
+        - !Ref s3BucketName
+        - !Sub "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: !Ref s3ObjectOwnership 
+      AccessControl: !If
+        - isEnableS3Acl
+        - !Ref s3AccessControl
+        - !Ref "AWS::NoValue"
+      BucketEncryption: !If
+        - isEnableBucketEncryption
+        - !If
+          - isUseKMSEncryption
+          - ServerSideEncryptionConfiguration:
+              - ServerSideEncryptionByDefault:
+                  KMSMasterKeyID: !Ref s3KmsKeyArn
+                  SSEAlgorithm: aws:kms
+          - ServerSideEncryptionConfiguration:
+              - ServerSideEncryptionByDefault:
+                  SSEAlgorithm: AES256
+                BucketKeyEnabled: true
+        - !Ref "AWS::NoValue"
+      Tags:
+        - Key: Name
+          Value: !If
+            - isS3BucketName
+            - !Ref s3BucketName
+            - !Sub "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}" 
+        - Key: project
+          Value: !Ref project
+        - Key: environment
+          Value: !Ref env
+        - Key: app
+          Value: !Ref app
+Outputs:
+  s3Bucket:
+    Description: S3 bucket name
+    Value: !Ref s3Bucket
+    Export:
+      Name: !Sub "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}"

@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cfn template to deploy application and deployment group
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  codeDeployApplicationName:
+    Type: String
+    Description: Application name of code deploy
+  codeDeployDeploymentConfigName:
+    Type: String
+    Description: Deployment configuration name of code deploy stage
+  codeDeployDeploymentGroupName:
+    Type: String
+    Description: Deployment group name of code deploy stage
+  codeDeployServiceRoleArn:
+    Type: String
+    Description: Code deploy role ARN
+  codeDeployDeploymentType:
+    Type: String
+    Description: Deployment type of code deploy
+  codeDeployDeploymentOption:
+    Type: String
+    Description: Deployment option of code deploy
+  codeDeployEc2TagFiltersKey:
+    Type: String
+    Description: EC2 tag filters key of code deploy
+  codeDeployEc2TagFiltersValue:
+    Type: String
+    Description: EC2 tag filters value of code deploy
+  codeDeployEc2TagFiltersType:
+    Type: String
+    Description: EC2 tag filters type of code deploy
+Conditions: 
+  isCodeDeployApplicationName: !Not [!Equals [!Ref codeDeployApplicationName, ""]]
+  isCodeDeployDeploymentGroupName: !Not [!Equals [!Ref codeDeployDeploymentGroupName, ""]]
+Resources:
+  codeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !If
+        - isCodeDeployApplicationName   
+        - !Ref codeDeployApplicationName
+        - !Sub "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}" 
+  codeDeployDeploymentGroup: 
+    Type: AWS::CodeDeploy::DeploymentGroup 
+    DependsOn: codeDeployApplication
+    Properties:
+      DeploymentGroupName: !If
+        - isCodeDeployDeploymentGroupName   
+        - !Ref codeDeployDeploymentGroupName
+        - !Sub "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}"
+      ApplicationName: !If
+        - isCodeDeployApplicationName   
+        - !Ref codeDeployApplicationName
+        - !Sub "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}"
+      DeploymentConfigName: !Ref codeDeployDeploymentConfigName 
+      Ec2TagFilters:
+        - Key: !Ref codeDeployEc2TagFiltersKey
+          Value: !Ref codeDeployEc2TagFiltersValue
+          Type: !Ref codeDeployEc2TagFiltersType
+      DeploymentStyle: 
+        DeploymentType: !Ref codeDeployDeploymentType
+        DeploymentOption: !Ref codeDeployDeploymentOption
+      ServiceRoleArn: !Ref codeDeployServiceRoleArn
+      Tags:
+        - Key: Name
+          Value: !If
+            - isCodeDeployDeploymentGroupName   
+            - !Ref codeDeployDeploymentGroupName
+            - !Sub "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}"
+        - Key: Author
+          Value: !Ref authorName
+        - Key: project
+          Value: !Ref project
+        - Key: environment
+          Value: !Ref env
+        - Key: app
+          Value: !Ref app
+Outputs:  
+  codeDeployApplication:
+    Description: Code deploy application
+    Value: !Ref codeDeployApplication
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codeDeployApplication-${AWS::Region}"
+  codeDeployDeploymentGroup:
+    Description: Code deploy deployment group
+    Value: !Ref codeDeployDeploymentGroup
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codeDeployDeploymentGroup-${AWS::Region}"

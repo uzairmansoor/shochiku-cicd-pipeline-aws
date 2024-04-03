@@ -1,0 +1,250 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn template to deploy EC2 instance
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  ec2ImageId:
+    Type: AWS::EC2::Image::Id
+    Description: The AMI ID to create EC2 instance
+  ec2InstanceType:
+    Type: String
+    Description: The EC2 instance type
+  ec2SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: The subnet ID to create EC2 instance in
+  ec2SecurityGroupIds:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: The security group IDs associated with EC2 instance
+  ec2EnableMonitoring:
+    Type: String
+    Default: false
+    AllowedValues: [true, false]
+    Description: Select true to enable EC2 detailed monitoring, false otherwise
+  ec2InstanceProfileName:
+    Type: String
+    Default: ""
+    Description: The name of an EC2 IAM instance profile(Optional)
+  ec2KeyPairName:
+    Type: String
+    Default: ""
+    Description: The key pair name for EC2 instance(Optional)
+  ec2TerminationProtection:
+    Type: String
+    Default: false
+    AllowedValues: [true, false]
+    Description: Select true to enable the EC2 termination protection, false otherwise
+  ec2EbsOptimized:
+    Type: String
+    Default: false
+    AllowedValues: [true, false]
+    Description: Select true to optimized EBS I/O for instance, false otherwise
+  ec2EnableAdditionalEbsVolumes:
+    Type: String
+    Default: no
+    AllowedValues: [yes, no]
+    Description: Specify whether to create additional EBS volumes for instance or not
+  ec2EnableEbsVolume01:
+    Type: String
+    Default: no
+    AllowedValues: [yes, no]
+    Description: Specify whether to create additional EBS volume01 for instance or not
+  ec2EnableEbsVolume02:
+    Type: String
+    Default: no
+    AllowedValues: [yes, no]
+    Description: Specify whether to create additional EBS volume02 for instance or not
+  ec2EnableModifyRootVolume:
+    Type: String
+    Default: no
+    AllowedValues: [yes, no]
+    Description: Specify whether to modify EBS root volume for instance or not
+  ec2EbsVolume01Type:
+    Type: String
+    Default: gp3
+    AllowedValues: [gp2, gp3, io1, io2, sc1, st1, standard]
+    Description: The volume01 type of EBS for EC2(applicable if EBS volume01 is enabled)
+  ec2EbsVolume01Size:
+    Type: Number
+    Description: The volume01 size of EBS for EC2(applicable if EBS volume01 is enabled)
+  ec2EbsVolume01DeleteOnTermination:
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+    Description: Select true to delete EBS volume01 on instance termination, false otherwise(applicable if EBS volume01 is enabled)
+  ec2EbsVolume01Encrypted:
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+    Description: Select true to enable EBS volume01 encryption, false otherwise(applicable if EBS volume01 is enabled)
+  ec2EbsVolume01Iops:
+    Type: Number
+    MinValue: 0
+    MaxValue: 64000
+    Description: IOPS for EBS volume01(Min 100, Max 64000 and applicable if EBS volume01 and iops are enabled)
+  ec2EbsVolume02Type:
+    Type: String
+    Default: gp3
+    AllowedValues: [gp2, gp3, io1, io2, sc1, st1, standard]
+    Description: The volume02 type of EBS for EC2(applicable if EBS volume02 is enabled)
+  ec2EbsVolume02Size:
+    Type: Number
+    Description: The volume02 size of EBS for EC2(applicable if EBS volume02 is enabled)
+  ec2EbsVolume02DeleteOnTermination:
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+    Description: Select true to delete EBS volume02 on instance termination, false otherwise(applicable if EBS volume02 is enabled)
+  ec2EbsVolume02Encrypted:
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+    Description: Select true to enable EBS volume02 encryption, false otherwise(applicable if EBS volume02 is enabled)
+  ec2EbsVolume02Iops:
+    Type: Number
+    MinValue: 0
+    MaxValue: 64000
+    Description: IOPS for EBS volume02(Min 100 and applicable if EBS volume02 and iops are enabled)
+  ec2EbsRootVolumeType:
+    Type: String
+    Default: gp3
+    AllowedValues: [gp2, gp3, io1, io2, sc1, st1, standard]
+    Description: The root volume type of EBS for EC2
+  ec2EbsRootVolumeSize:
+    Type: Number
+    Description: The root volume size of EBS for EC2
+  ec2EbsRootVolumeDeleteOnTermination:
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+    Description: Select true to delete EBS root volume on instance termination, false otherwise
+  ec2EbsRootVolumeEncrypted:
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+    Description: Select true to enable EBS root volume encryption, false otherwise
+  ec2EbsRootVolumeIops:
+    Type: Number
+    MinValue: 0
+    MaxValue: 64000
+    Description: IOPS for EBS root volume
+
+Conditions:
+  isEnableInstanceProfile: !Not [!Equals [!Ref ec2InstanceProfileName, ""]]
+  isCreateEbsVolume: !Equals [!Ref ec2EnableAdditionalEbsVolumes, yes]
+  isCreateEbsVolume01: !Equals [!Ref ec2EnableEbsVolume01, yes]
+  isCreateEbsVolume02: !Equals [!Ref ec2EnableEbsVolume02, yes]
+  isModifyRootEbsVolume: !Equals [!Ref ec2EnableModifyRootVolume, yes]
+
+Resources:
+  ec2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !Ref ec2ImageId
+      InstanceType: !Ref ec2InstanceType
+      SubnetId: !Ref ec2SubnetId
+      SecurityGroupIds:
+        - !Ref ec2SecurityGroupIds
+      Monitoring: !Ref ec2EnableMonitoring
+      IamInstanceProfile: !If
+        - isEnableInstanceProfile
+        - !Ref ec2InstanceProfileName
+        - Ref: "AWS::NoValue"
+      KeyName: !Ref ec2KeyPairName
+      DisableApiTermination: !Ref ec2TerminationProtection
+      EbsOptimized: !Ref ec2EbsOptimized
+      BlockDeviceMappings:
+        - !If
+          - isCreateEbsVolume
+          - !If
+              - isCreateEbsVolume01
+              - DeviceName: /dev/sdb
+                Ebs:
+                  VolumeType: !Ref ec2EbsVolume01Type
+                  VolumeSize: !Ref ec2EbsVolume01Size
+                  DeleteOnTermination: !Ref ec2EbsVolume01DeleteOnTermination
+                  Encrypted: !Ref ec2EbsVolume01Encrypted
+                  Iops: !Ref ec2EbsVolume01Iops
+              - Ref: "AWS::NoValue"
+          - !If
+            - isCreateEbsVolume02
+            - DeviceName: /dev/sdc
+              Ebs:
+                VolumeType: !Ref ec2EbsVolume02Type
+                VolumeSize: !Ref ec2EbsVolume02Size
+                DeleteOnTermination: !Ref ec2EbsVolume02DeleteOnTermination
+                Encrypted: !Ref ec2EbsVolume02Encrypted
+                Iops:
+                  - !Ref ec2EbsVolume02Iops
+            - Ref: "AWS::NoValue"
+        - !If
+          - isModifyRootEbsVolume
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeType: !Ref ec2EbsRootVolumeType
+              VolumeSize: !Ref ec2EbsRootVolumeSize
+              DeleteOnTermination: !Ref ec2EbsRootVolumeDeleteOnTermination
+              Encrypted: !Ref ec2EbsRootVolumeEncrypted
+              Iops: !Ref ec2EbsRootVolumeIops
+          - Ref: "AWS::NoValue"
+        #   - Ref: "AWS::NoValue"
+        # - !If
+        #   - isModifyRootEbsVolume
+        #   - DeviceName: /dev/sda1
+        #     Ebs:
+        #       VolumeType: !Ref ec2EbsRootVolumeType
+        #       VolumeSize: !Ref ec2EbsRootVolumeSize
+        #       DeleteOnTermination: !Ref ec2EbsRootVolumeDeleteOnTermination
+        #       Encrypted: !Ref ec2EbsRootVolumeEncrypted
+        #       Iops: !Ref ec2EbsRootVolumeIops
+        #   - Ref: "AWS::NoValue"
+      UserData:
+        Fn::Base64:
+          !Sub |
+          #!/bin/bash  
+          sudo apt-get update -y
+          sudo apt-get update -y aws-cfn-bootstrap
+          sudo apt-get install -y aws-cli
+          sudo apt-get install -y ruby
+          sudo apt-get install wget
+          #!/bin/bash
+          CODEDEPLOY_BIN="/opt/codedeploy-agent/bin/codedeploy-agent"
+          $CODEDEPLOY_BIN stop
+          yum erase codedeploy-agent -y
+          cd /home/ec2-user
+          wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
+          chmod +x ./install
+          sudo ./install auto
+          sudo service codedeploy-agent start
+          yum install httpd -y
+          systemctl start httpd
+          systemctl enable httpd
+      Tags:
+        - Key: Name
+          Value: !Sub "${project}-${env}-${app}"
+        - Key: name
+          Value: codeDeployInstance
+        - Key: Author
+          Value: !Ref authorName
+        - Key: project
+          Value: !Ref project
+        - Key: environments
+          Value: !Ref env
+        - Key: app
+          Value: !Ref app
+Outputs:
+  ec2Instance:
+    Description: EC2 Instance Id
+    Value: !Ref ec2Instance
+    Export:
+      Name: !Sub "${project}-${env}-${app}-${AWS::Region}"

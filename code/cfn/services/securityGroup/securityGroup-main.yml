@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn driver template to deploy Security Groups
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://genpact-app-uat-us-east-1-546268160168.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path
+Resources:
+  securityGroup:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/securityGroup/securityGroup-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        sgVpcId: !ImportValue
+          Fn::Sub: "${project}-${env}-${app}-vpcId-${AWS::Region}"
+        sgInternetTrafficIngressCidr: 0.0.0.0/0
+        sgInternetTrafficEgressCidr: 0.0.0.0/0
+        sgAllowEgressProtocol: -1
+        sgHttpPort: 80
+        sgHttpsPort: 443
+        sgDbServerPort: 3306
+        sgSshPort: 22
+        sgRdpPort: 3389
+        sgJumpAndEndpointAccessIp: 45.64.183.177/32
+Outputs:
+  securityGroup:
+    Description: Security Group
+    Value: !Ref securityGroup
+    Export:
+      Name: !Sub "${project}-${env}-${app}-securityGroup-${AWS::Region}"

@@ -1,0 +1,235 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cfn template to deploy IAM Roles and Policies
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  ec2InstanceRoleName:
+    Type: String
+    Description: The name for the EC2 instance role
+  ec2InstancePolicyName:
+    Type: String
+    Description: The name for the EC2 instance policy
+  ec2InstanceIamProfileName:
+    Type: String
+    Description: The name for the EC2 instance profile
+  codeDeployRoleName:
+    Type: String
+    Description: The name for the code deploy role
+  codeDeployPolicyName:
+    Type: String
+    Description: The name for the code deploy policy
+  codeDeployIamProfileName:
+    Type: String
+    Description: The name for the code deploy profile
+  codePipelineRoleName:
+    Type: String
+    Description: The name for code pipeline role
+  codePipelinePolicyName:
+    Type: String
+    Description: The name for the code pipeline policy
+  codePipelineIamProfileName:
+    Type: String
+    Description: The name for the code pipeline profile
+Conditions:
+  isEc2InstanceRoleName: !Not [!Equals [!Ref ec2InstanceRoleName, ""]]
+  isEc2InstancePolicyName: !Not [!Equals [!Ref ec2InstancePolicyName, ""]]
+  isEc2InstanceIamProfileName: !Not [!Equals [!Ref ec2InstanceIamProfileName, ""]]
+  isCodeDeployRoleName: !Not [!Equals [!Ref codeDeployRoleName, ""]]
+  isCodeDeployPolicyName: !Not [!Equals [!Ref codeDeployPolicyName, ""]]
+  isCodeDeployIamProfileName: !Not [!Equals [!Ref codeDeployIamProfileName, ""]]
+  isCodePipelineRoleName: !Not [!Equals [!Ref codePipelineRoleName, ""]]
+  isCodePipelinePolicyName: !Not [!Equals [!Ref codePipelinePolicyName, ""]]
+  isCodePipelineIamProfileName: !Not [!Equals [!Ref codePipelineIamProfileName, ""]]
+Resources:
+  ec2InstanceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !If
+        - isEc2InstanceRoleName
+        - !Ref ec2InstanceRoleName
+        - !Sub "${project}-${env}-${app}-ec2InstanceRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies: 
+        - PolicyName: !If
+            - isEc2InstancePolicyName
+            - !Ref ec2InstancePolicyName
+            - !Sub "${project}-${env}-${app}-ec2InstancePolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                - cloudformation:*
+                - codecommit:*
+                - codepipeline:*
+                - codedeploy:*
+                - codebuild:*
+                - s3:*
+                Resource: "*"
+  ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !If
+        - isEc2InstanceIamProfileName
+        - !Ref ec2InstanceIamProfileName
+        - !Sub "${project}-${env}-${app}-ec2InstanceIamProfile"
+      Path: /
+      Roles:
+        - !Ref ec2InstanceRole
+  codeDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !If
+        - isCodeDeployRoleName
+        - !Ref codeDeployRoleName
+        - !Sub "${project}-${env}-${app}-codeDeployRoleName"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Sid: '1'
+            Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - 
+          PolicyName: !If
+            - isCodeDeployPolicyName
+            - !Ref codeDeployPolicyName
+            - !Sub "${project}-${env}-${app}-codeDeployPolicy"
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Resource:
+                  - '*'
+                Action:
+                  - ec2:*
+                  - codebuild:*
+                  - codepipeline:*
+                  - codecommit:*
+                  - cloudformation:*
+                  - s3:*
+              - Effect: Allow
+                Resource: '*'
+                Action: "*" 
+  codeDeployInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      InstanceProfileName: !If
+        - isCodeDeployIamProfileName
+        - !Ref codeDeployIamProfileName
+        - !Sub "${project}-${env}-${app}-codeDeployIamProfile"
+      Path: /    
+      Roles:
+        - !Ref codeDeployRole
+  codePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !If
+        - isCodePipelineRoleName
+        - !Ref codePipelineRoleName
+        - !Sub "${project}-${env}-${app}-codePipelineRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: !If
+            - isCodePipelinePolicyName
+            - !Ref codePipelinePolicyName
+            - !Sub "${project}-${env}-${app}-codePipelinePolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - ec2:*
+                  - codebuild:*
+                  - codedeploy:*
+                  - codecommit:* 
+                  - cloudformation:*
+                  - s3:*
+  codePipelineInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      InstanceProfileName: !If
+        - isCodePipelineIamProfileName
+        - !Ref codePipelineIamProfileName
+        - !Sub "${project}-${env}-${app}-codePipelineIamProfile"
+      Path: /    
+      Roles:
+        - !Ref codePipelineRole
+Outputs:
+  ec2InstanceRoleName:
+    Value: !Ref ec2InstanceRole
+    Export:
+      Name: !Sub "${project}-${env}-${app}-ec2InstanceRoleName-${AWS::Region}"
+  ec2InstanceRoleRoleArn:
+    Value: !GetAtt ec2InstanceRole.Arn
+    Export:
+      Name: !Sub "${project}-${env}-${app}-ec2InstanceRoleArn-${AWS::Region}"
+  ec2InstanceProfileName:
+    Value: !Ref ec2InstanceProfile
+    Export:
+      Name: !Sub "${project}-${env}-${app}-ec2InstanceProfileName-${AWS::Region}"
+  ec2InstanceProfileArn:
+    Value: !GetAtt ec2InstanceProfile.Arn
+    Export:
+      Name: !Sub "${project}-${env}-${app}-ec2InstanceProfileArn-${AWS::Region}"
+  codeDeployRoleName:
+    Value: !Ref codeDeployRole
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codeDeployRoleName-${AWS::Region}"
+  codeDeployRoleArn:
+    Value: !GetAtt codeDeployRole.Arn
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codeDeployRoleArn-${AWS::Region}"
+  codeDeployInstanceProfileName:
+    Value: !Ref codeDeployInstanceProfile
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codeDeployInstanceProfileName-${AWS::Region}"
+  codeDeployInstanceProfileArn:
+    Value: !GetAtt codeDeployInstanceProfile.Arn
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codeDeployInstanceProfileArn-${AWS::Region}"
+  codePipelineRoleName:
+    Value: !Ref codePipelineRole
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codePipelineRoleName-${AWS::Region}"
+  codePipelineRoleArn:
+    Value: !GetAtt codePipelineRole.Arn
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codePipelineRoleArn-${AWS::Region}"
+  codePipelineInstanceProfileName:
+    Value: !Ref codePipelineInstanceProfile
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codePipelineInstanceProfileName-${AWS::Region}"
+  codePipelineInstanceProfileArn:
+    Value: !GetAtt codePipelineInstanceProfile.Arn
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codePipelineInstanceProfileArn-${AWS::Region}"

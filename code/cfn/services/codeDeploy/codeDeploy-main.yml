@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cfn driver template to deploy CodeDeploy application and deployment group
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://shochiku-app-dev-us-east-1-239715580977.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path"
+Resources:
+  codeDeploy:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${s3ArtifactPath}/codeDeploy/codeDeploy-app.yml'
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: deploymentGroup
+        authorName: uzair
+        codeDeployApplicationName: !Sub "${project}-${env}-application-${AWS::Region}--${AWS::AccountId}"
+        codeDeployDeploymentConfigName: CodeDeployDefault.OneAtATime
+        codeDeployDeploymentGroupName: !Sub "${project}-${env}-deploymentGroup-${AWS::Region}--${AWS::AccountId}"
+        codeDeployServiceRoleArn: !ImportValue
+          Fn::Sub: "${project}-${env}-${app}-codeDeployRoleArn-${AWS::Region}"
+        codeDeployDeploymentType: IN_PLACE
+        codeDeployDeploymentOption: WITHOUT_TRAFFIC_CONTROL
+        codeDeployEc2TagFiltersKey: name
+        codeDeployEc2TagFiltersValue: codeDeployInstance
+        codeDeployEc2TagFiltersType: KEY_AND_VALUE
+Outputs:
+  codeDeploy:
+    Description: Code deploy application and deployment group
+    Value: !Ref codeDeploy
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codeDeploy-${AWS::Region}"
