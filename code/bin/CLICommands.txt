@@ -1,0 +1,33 @@
+                                    DEV Env
+
+ #AWS S3 bucket sync command
+ aws s3 sync . s3://shochiku-app-dev-us-east-1-239715580977/ --region us-east-1
+
+#Main Create dev
+    aws cloudformation create-stack --stack-name shochiku-dev-us-east-1 --template-body file://code/cfn/stacks/dev/main.yml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=project,ParameterValue="shochiku" ParameterKey=env,ParameterValue="dev" ParameterKey=app,ParameterValue="app" ParameterKey=authorName,ParameterValue="uzair" --region us-east-1
+#Main Update dev
+    aws cloudformation update-stack --stack-name shochiku-dev-us-east-1 --template-body file://code/cfn/stacks/dev/main.yml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=project,ParameterValue="shochiku" ParameterKey=env,ParameterValue="dev" ParameterKey=app,ParameterValue="app" ParameterKey=authorName,ParameterValue="uzair" --region us-east-1
+#Main Delete dev
+    aws cloudformation delete-stack --stack-name shochiku-dev-us-east-1 --region us-east-1
+#VPC Create dev
+ aws cloudformation create-stack --stack-name shochiku-dev-vpc-us-east-1 --template-body file://vpc-main.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=project,ParameterValue="shochiku" ParameterKey=env,ParameterValue="dev" ParameterKey=app,ParameterValue="app" --region us-east-1
+ #VPC Update dev
+ aws cloudformation update-stack --stack-name shochiku-dev-vpc-us-east-1 --template-body file://vpc-main.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=project,ParameterValue="shochiku" ParameterKey=env,ParameterValue="dev" ParameterKey=app,ParameterValue="app" --region us-east-1
+
+
+                                    PROD Env
+
+ #AWS S3 bucket sync command
+ aws s3 sync . s3://shochiku-app-prod-ap-northeast-1-239715580977/ --region ap-northeast-1
+
+#Main Create prod
+    aws cloudformation create-stack --stack-name shochiku-prod-ap-northeast-1 --template-body file://code/cfn/stacks/prod/main.yml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=project,ParameterValue="shochiku" ParameterKey=env,ParameterValue="prod" ParameterKey=app,ParameterValue="app" ParameterKey=authorName,ParameterValue="uzair" --region ap-northeast-1
+#Main Update prod
+    aws cloudformation update-stack --stack-name shochiku-prod-ap-northeast-1 --template-body file://code/cfn/stacks/prod/main.yml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=project,ParameterValue="shochiku" ParameterKey=env,ParameterValue="prod" ParameterKey=app,ParameterValue="app" ParameterKey=authorName,ParameterValue="uzair" --region ap-northeast-1
+#Main Delete prod
+    aws cloudformation delete-stack --stack-name shochiku-prod-ap-northeast-1 --region ap-northeast-1
+#VPC Create prod
+ aws cloudformation create-stack --stack-name shochiku-prod-vpc-ap-northeast-1 --template-body file://vpc-main.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=project,ParameterValue="shochiku" ParameterKey=env,ParameterValue="prod" ParameterKey=app,ParameterValue="app" --region ap-northeast-1
+ #VPC Update prod
+ aws cloudformation update-stack --stack-name shochiku-prod-vpc-ap-northeast-1 --template-body file://vpc-main.yaml --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=project,ParameterValue="shochiku" ParameterKey=env,ParameterValue="prod" ParameterKey=app,ParameterValue="app" --region ap-northeast-1
+
