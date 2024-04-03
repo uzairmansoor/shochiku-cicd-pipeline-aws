@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn driver template to deploy EC2 instance
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://genpact-app-uat-us-east-1-546268160168.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path
+
+Resources:
+  webEc2Instance:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/ec2/ec2-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: webEc2Instance 
+        authorName: uzair
+        ec2EnableEndpoint: yes
+        ec2EndpointIdentifier: !Sub "${project}-${env}-${app}-endpointConnect"
+        ec2EndpointPreserveClientIp: true
+        ec2EndpointPrivateSubnetId: !ImportValue
+          Fn::Sub: "${project}-${env}-app-frontendSubnet01Az01Id-${AWS::Region}"
+        ec2EndpointSgIds: !ImportValue
+          Fn::Sub: "${project}-${env}-app-sgEc2ConnectEndpoint-${AWS::Region}"
+        ec2ImageId: ami-0f9c44e98edf38a2b
+        ec2InstanceType: t2.micro #t2.medium
+        ec2SubnetId: !ImportValue
+          Fn::Sub: "${project}-${env}-app-frontendSubnet01Az01Id-${AWS::Region}"
+        ec2SecurityGroupIds: !ImportValue
+          Fn::Sub: "${project}-${env}-app-sgWebServer-${AWS::Region}"
+        ec2EnableMonitoring: false
+        ec2InstanceProfileName: "" #!ImportValue
+          # Fn::Sub: "${project}-${env}-app-ec2IamInstanceProfileName-${AWS::Region}"
+        ec2KeyPairName: !ImportValue
+          Fn::Sub: "${project}-${env}-ec2KeyPair-${AWS::Region}"
+        ec2TerminationProtection: false
+        ec2EbsOptimized: false
+        ec2EnableAdditionalEbsVolumes: no
+        ec2EnableEbsVolume01: no
+        ec2EnableEbsVolume02: no
+        ec2EnableModifyRootVolume: yes
+        ec2EbsVolume01Type: gp3
+        ec2EbsVolume01Size: 10 #100
+        ec2EbsVolume01DeleteOnTermination: true
+        ec2EbsVolume01Encrypted: true
+        ec2EbsVolume01Iops: 0
+        ec2EbsVolume02Type: gp3
+        ec2EbsVolume02Size: 10
+        ec2EbsVolume02DeleteOnTermination: true
+        ec2EbsVolume02Encrypted: false
+        ec2EbsVolume02Iops: 0
+        ec2EbsRootVolumeType: gp3
+        ec2EbsRootVolumeSize: 40 #100
+        ec2EbsRootVolumeDeleteOnTermination: true
+        ec2EbsRootVolumeEncrypted: true
+        ec2EbsRootVolumeIops: 3000
+
+Outputs:
+  webEc2Instance:
+    Description: EC2 Instance
+    Value: !Ref webEc2Instance
+    Export:
+      Name: !Sub "${project}-${env}-${app}-${AWS::StackName}-${AWS::Region}"

@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn driver template to deploy VPC
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://shochiku-app-dev-us-east-1-239715580977.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path
+Resources:
+  vpc:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/vpc/vpc-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        vpcCidr: 10.20.0.0/16
+        vpcEnableDnsSupport: true
+        vpcEnableDnsHostName: true
+        vpcAssignSubnetPublicIp: true
+        vpcPublicSubnet01Cidr: 10.20.0.0/21
+        vpcFrontendSubnet01Cidr: 10.20.8.0/21
+        vpcProtectedSubnet01Cidr: 10.20.16.0/21
+        vpcShieldSubnet01Cidr: 10.20.24.0/21
+        vpcPublicSubnet02Cidr: ""
+        vpcFrontendSubnet02Cidr: 10.20.40.0/21
+        vpcProtectedSubnet02Cidr: 10.20.48.0/21
+        vpcShieldSubnet02Cidr: 10.20.56.0/21
+        vpcPublicRouteDestinationCidr: 0.0.0.0/0
+        vpcFrontendRouteDestinationCidr: 0.0.0.0/0
+        vpcProtectedRouteDestinationCidr: 0.0.0.0/0
+        vpcShieldRouteDestinationCidr: 0.0.0.0/0
+        vpcNaclActionRule: allow
+        vpcNaclPublicInboundCidr: 0.0.0.0/0 
+        vpcNaclFrontendInboundCidr: 0.0.0.0/0 #10.1.0.0/16 
+        vpcNaclProtectedInboundCidr: 10.20.0.0/16 
+        vpcNaclShieldInboundCidr: 0.0.0.0/0 #10.1.0.0/16
+        vpcInternetTrafficOutboundCidr: 0.0.0.0/0
+        vpcNaclPublicInboundProtocol: -1
+        vpcNaclFrontendInboundProtocol: -1
+        vpcNaclProtectedInboundProtocol: 6
+        vpcNaclShieldInboundProtocol: -1
+        vpcNaclPublicInboundStartPort: -1
+        vpcNaclPublicInboundEndPort: -1
+        vpcNaclFrontendInboundStartPort: 22
+        vpcNaclFrontendInboundEndPort: 443
+        vpcNaclProtectedInboundStartPort: 3306
+        vpcNaclProtectedInboundEndPort: 3306
+        vpcNaclShieldInboundStartPort: 22
+        vpcNaclShieldInboundEndPort: 443
+
+Outputs:
+  vpc:
+    Description: VPC
+    Value: !Ref vpc
+    Export:
+      Name: !Sub "${project}-${env}-${app}-vpc-${AWS::Region}"

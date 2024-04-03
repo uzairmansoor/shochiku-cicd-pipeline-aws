@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn template to deploy EC2 key pair
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  ec2KeyPairName:
+    Type: String
+    Default: ""
+    Description: The name of an EC2 key pair 
+  ec2KeyPairFormat:
+    Type: String
+    Default: pem
+    AllowedValues: [pem, ppk]
+    Description: Select the EC2 key pair format for connecting to instance 
+  ec2KeyPairType:
+    Type: String
+    Default: rsa
+    AllowedValues: [rsa, ed25519]
+    Description: Choose the type of EC2 key pair for secure instance access   
+Conditions:
+  isKeyPairName: !Not [!Equals [!Ref ec2KeyPairName , ""]]
+Resources:
+  ec2KeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties: 
+      KeyName: !If
+        - isKeyPairName
+        - !Ref ec2KeyPairName
+        - !Sub "${project}-${env}-${app}-${AWS::Region}"
+      KeyFormat: !Ref ec2KeyPairFormat
+      KeyType: !Ref ec2KeyPairType
+      Tags:
+        - Key: Name
+          Value: !If
+            - isKeyPairName
+            - !Ref ec2KeyPairName
+            - !Sub "${project}-${env}-${app}-${AWS::Region}"
+        - Key: Author
+          Value: !Ref authorName
+        - Key: project
+          Value: !Ref project
+        - Key: environment
+          Value: !Ref env
+        - Key: app
+          Value: !Ref app
+Outputs:
+  ec2KeyPair:
+    Description: EC2 Key Pair Name
+    Value: !Ref ec2KeyPair
+    Export:
+      Name: !Sub "${project}-${env}-${app}-${AWS::Region}"

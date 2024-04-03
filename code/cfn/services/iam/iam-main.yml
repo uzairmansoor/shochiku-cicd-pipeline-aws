@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn driver template to deploy IAM policies, roles and instance profiles
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://shochiku-app-dev-us-east-1-239715580977.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path
+Resources:
+  iam:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/iam/iam-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        ec2InstanceRoleName: !Sub "${project}-${env}-${app}-ec2InstanceRole"
+        ec2InstancePolicyName: !Sub "${project}-${env}-${app}-ec2InstancePolicy"
+        ec2InstanceIamProfileName: !Sub "${project}-${env}-${app}-ec2InstanceProfile"
+        codeDeployRoleName: !Sub "${project}-${env}-${app}-codeDeployRole"
+        codeDeployPolicyName: !Sub "${project}-${env}-${app}-codeDeployPolicy"
+        codeDeployIamProfileName: !Sub "${project}-${env}-${app}-codeDeployProfile"
+        codePipelineRoleName: !Sub "${project}-${env}-${app}-codePipelineRole"
+        codePipelinePolicyName: !Sub "${project}-${env}-${app}-codePipelinePolicy"
+        codePipelineIamProfileName: !Sub "${project}-${env}-${app}-codePipelineProfile"
+Outputs:
+  iam:
+    Description: IAM policies, roles and instance profiles
+    Value: !Ref iam
+    Export:
+      Name: !Sub "${project}-${env}-${app}-iam-${AWS::Region}"

@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cfn template to deploy codepipeline
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: Author name
+  codeCommitRepoName:
+    Type: String
+    Description: Name of the CodeCommit repository
+  codeCommitRepoBranchName:
+    Type: String
+    Description: Name of the branch in the code commit repository
+  codePipelineS3BucketName:
+    Type: String
+    Description: S3 bucket name for Code Pipeline
+  codePipelineServiceRoleArn:
+    Type: String
+    Description: Code Pipeline Service Role ARN
+  codeDeployDeploymentGroup:
+    Type: String
+    Description: Code Deploy Deployment Group
+  codeDeployApplication:
+    Type: String
+    Description: Code Deploy Application
+Metadata:
+    AWS::CloudFormation::Init:
+      services:
+        sysvint:
+          codedeploy-agent:
+            enabled: 'true'
+            ensureRunning: 'true'
+Resources: 
+  codePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !Ref codePipelineServiceRoleArn
+      RestartExecutionOnUpdate: True
+      ArtifactStore:
+        Type: S3
+        Location: !Ref codePipelineS3BucketName
+      Stages:
+        - Name: SourceStage
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: '1'
+                Provider: CodeCommit
+              OutputArtifacts:
+                - Name: SourceStageOutput 
+              Configuration:
+                BranchName: !Ref codeCommitRepoBranchName
+                RepositoryName: !Ref codeCommitRepoName
+              RunOrder: 1 
+        - Name: DeployStage
+          Actions:
+            - Name: DeployAction
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: '1'
+                Provider: CodeDeploy
+              InputArtifacts: 
+                - 
+                  Name: SourceStageOutput  
+              Configuration:
+                ApplicationName: !Ref codeDeployApplication
+                DeploymentGroupName: !Ref  codeDeployDeploymentGroup 
+              RunOrder: 1
+Outputs:
+  codePipeline:
+    Value: !Ref codePipeline
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codePipeline-${AWS::Region}"  

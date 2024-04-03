@@ -1,0 +1,219 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn driver template to deploy shochiku resources
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://shochiku-app-dev-us-east-1-239715580977.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path
+Resources:
+  vpc:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/vpc/vpc-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        vpcCidr: 10.20.0.0/16
+        vpcEnableDnsSupport: true
+        vpcEnableDnsHostName: true
+        vpcAssignSubnetPublicIp: true
+        vpcPublicSubnet01Cidr: 10.20.0.0/21
+        vpcFrontendSubnet01Cidr: 10.20.8.0/21
+        vpcProtectedSubnet01Cidr: 10.20.16.0/21
+        vpcShieldSubnet01Cidr: 10.20.24.0/21
+        vpcPublicSubnet02Cidr: 10.20.32.0/21
+        vpcFrontendSubnet02Cidr: 10.20.40.0/21
+        vpcProtectedSubnet02Cidr: 10.20.48.0/21
+        vpcPublicSubnet02Cidr: ""
+        vpcPublicRouteDestinationCidr: 0.0.0.0/0
+        vpcFrontendRouteDestinationCidr: 0.0.0.0/0
+        vpcProtectedRouteDestinationCidr: 0.0.0.0/0
+        vpcShieldRouteDestinationCidr: 0.0.0.0/0
+        vpcNaclActionRule: allow
+        vpcNaclPublicInboundCidr: 0.0.0.0/0 
+        vpcNaclFrontendInboundCidr: 0.0.0.0/0 #10.1.0.0/16 
+        vpcNaclProtectedInboundCidr: 10.20.0.0/16 
+        vpcNaclShieldInboundCidr: 0.0.0.0/0 #10.1.0.0/16
+        vpcInternetTrafficOutboundCidr: 0.0.0.0/0
+        vpcNaclPublicInboundProtocol: -1
+        vpcNaclFrontendInboundProtocol: -1
+        vpcNaclProtectedInboundProtocol: 6
+        vpcNaclShieldInboundProtocol: -1
+        vpcNaclPublicInboundStartPort: -1
+        vpcNaclPublicInboundEndPort: -1
+        vpcNaclFrontendInboundStartPort: 22
+        vpcNaclFrontendInboundEndPort: 443
+        vpcNaclProtectedInboundStartPort: 3306
+        vpcNaclProtectedInboundEndPort: 3306
+        vpcNaclShieldInboundStartPort: 22
+        vpcNaclShieldInboundEndPort: 443
+  s3CodePipelineArtifactsBucket:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/s3/s3-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: codepipeline-artifacts
+        s3BucketName: !Sub "${project}-${env}-codepipeline-artifacts-${AWS::Region}-${AWS::AccountId}"
+        s3ObjectOwnership: BucketOwnerPreferred #BucketOwnerEnforced/ObjectWriter/BucketOwnerPreferred
+        s3EnableAcl: no #yes/no
+        s3AccessControl: Private #Private/BucketOwnerFullControl/PublicReadWrite/LogDeliveryWrite/etc..
+        s3EnableBucketEncryption: yes #yes/no 
+        s3KmsKeyArn: ""
+  iam:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/iam/iam-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        ec2InstanceRoleName: !Sub "${project}-${env}-${app}-ec2InstanceRole"
+        ec2InstancePolicyName: !Sub "${project}-${env}-${app}-ec2InstancePolicy"
+        ec2InstanceIamProfileName: !Sub "${project}-${env}-${app}-ec2InstanceProfile"
+        codeDeployRoleName: !Sub "${project}-${env}-${app}-codeDeployRole"
+        codeDeployPolicyName: !Sub "${project}-${env}-${app}-codeDeployPolicy"
+        codeDeployIamProfileName: !Sub "${project}-${env}-${app}-codeDeployProfile"
+        codePipelineRoleName: !Sub "${project}-${env}-${app}-codePipelineRole"
+        codePipelinePolicyName: !Sub "${project}-${env}-${app}-codePipelinePolicy"
+        codePipelineIamProfileName: !Sub "${project}-${env}-${app}-codePipelineProfile"
+  codeDeploy:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${s3ArtifactPath}/codeDeploy/codeDeploy-app.yml'
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: deploymentGroup
+        authorName: uzair
+        codeDeployApplicationName: !Sub "${project}-${env}-application-${AWS::Region}--${AWS::AccountId}"
+        codeDeployDeploymentConfigName: CodeDeployDefault.OneAtATime
+        codeDeployDeploymentGroupName: !Sub "${project}-${env}-deploymentGroup-${AWS::Region}--${AWS::AccountId}"
+        codeDeployServiceRoleArn: !GetAtt iam.Outputs.codeDeployRoleArn
+        codeDeployDeploymentType: IN_PLACE
+        codeDeployDeploymentOption: WITHOUT_TRAFFIC_CONTROL
+        codeDeployEc2TagFiltersKey: name
+        codeDeployEc2TagFiltersValue: codeDeployInstance
+        codeDeployEc2TagFiltersType: KEY_AND_VALUE
+  codePipeline:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${s3ArtifactPath}/codePipeline/codePipeline-app.yml'
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        codeCommitRepoName: shochiku-ruby-repo-us-east-1
+        codeCommitRepoBranchName: feature-ruby-app
+        codePipelineS3BucketName: !GetAtt s3CodePipelineArtifactsBucket.Outputs.s3Bucket
+        codePipelineServiceRoleArn: !GetAtt iam.Outputs.codePipelineRoleArn
+        codeDeployDeploymentGroup: !GetAtt codeDeploy.Outputs.codeDeployDeploymentGroup
+        codeDeployApplication: !GetAtt codeDeploy.Outputs.codeDeployApplication
+  securityGroup:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/securityGroup/securityGroup-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        sgVpcId: !GetAtt vpc.Outputs.vpc
+        sgInternetTrafficIngressCidr: 0.0.0.0/0
+        sgInternetTrafficEgressCidr: 0.0.0.0/0
+        sgAllowIngressProtocol: -1
+        sgAllowEgressProtocol: -1
+  ec2KeyPair:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/ec2/ec2KeyPair/ec2KeyPair-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: ec2KeyPair
+        authorName: uzair
+        ec2KeyPairName: !Sub "${project}-${env}-${app}-${AWS::Region}"
+        ec2KeyPairFormat: pem
+        ec2KeyPairType: rsa
+  webEc2Instance:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/ec2/ec2-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: webEc2Instance 
+        authorName: uzair
+        ec2ImageId: ami-080e1f13689e07408
+        ec2InstanceType: t2.micro #t2.medium
+        ec2SubnetId: !GetAtt vpc.Outputs.publicSubnet01Az01
+        ec2SecurityGroupIds: !GetAtt securityGroup.Outputs.sgWebServer
+        ec2EnableMonitoring: false
+        ec2InstanceProfileName: !GetAtt iam.Outputs.ec2InstanceProfileName
+        ec2KeyPairName: !GetAtt ec2KeyPair.Outputs.ec2KeyPair
+        ec2EnableModifyRootVolume: yes
+        ec2EbsVolume01Type: gp3
+        ec2EbsVolume01Size: 10
+        ec2EbsVolume01Encrypted: true
+        ec2EbsVolume01Iops: 0
+        ec2EbsVolume02Type: gp3
+        ec2EbsVolume02Size: 10
+        ec2EbsVolume02Encrypted: false
+        ec2EbsVolume02Iops: 0
+        ec2EbsRootVolumeType: gp3
+        ec2EbsRootVolumeSize: 40 #100
+        ec2EbsRootVolumeIops: 3000
+Outputs:
+  vpc:
+    Description: VPC
+    Value: !Ref vpc
+    Export:
+      Name: !Sub "${project}-${env}-${app}-vpc-${AWS::StackName}-${AWS::Region}"
+  s3CodePipelineArtifactsBucket:
+    Description: CodePipelien Artifacts bucket name
+    Value: !Ref s3CodePipelineArtifactsBucket
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codepipeline-artifacts-${AWS::StackName}-${AWS::Region}"
+  iam:
+    Description: IAM policies, roles and instance profiles
+    Value: !Ref iam
+    Export:
+      Name: !Sub "${project}-${env}-${app}-iam-${AWS::StackName}-${AWS::Region}"
+  codeDeploy:
+    Description: Code deploy application and deployment group
+    Value: !Ref codeDeploy
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codeDeploy-${AWS::StackName}-${AWS::Region}"
+  codePipeline:
+    Description: CodePipeline
+    Value: !Ref codePipeline
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codePipeline-${AWS::StackName}-${AWS::Region}"
+  ec2KeyPair:
+    Description: EC2 Key Pair
+    Value: !Ref ec2KeyPair
+    Export:
+      Name: !Sub "${project}-${env}-${app}-ec2KeyPair-${AWS::StackName}-${AWS::Region}"
+  webEc2Instance:
+    Description: EC2 Instance
+    Value: !Ref webEc2Instance
+    Export:
+      Name: !Sub "${project}-${env}-${app}-webEc2Instance-${AWS::StackName}-${AWS::Region}"

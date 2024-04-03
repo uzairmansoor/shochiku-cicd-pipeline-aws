@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cfn driver template to deploy CodePipeline
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://shochiku-app-dev-us-east-1-239715580977.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path"
+Resources:
+  codePipeline:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${s3ArtifactPath}/codePipeline/codePipeline-app.yml'
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: !Ref app
+        authorName: uzair
+        codeCommitRepoName: !Sub "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}"
+        codePipelineS3BucketName: !ImportValue
+          Fn::Sub: "${project}-${env}-${app}-${AWS::Region}-${AWS::AccountId}"
+        codePipelineServiceRoleArn: !ImportValue
+          Fn::Sub: "${project}-${env}-${app}-codePipelineRoleArn-${AWS::Region}"
+        codeDeployDeploymentGroup: !ImportValue
+          Fn::Sub: "${project}-${env}-${app}-codeDeployDeploymentGroup-${AWS::Region}"
+        codeDeployApplication: !ImportValue
+          Fn::Sub: "${project}-${env}-${app}-codeDeployApplication-${AWS::Region}"
+Outputs:
+  codePipeline:
+    Description: CodePipeline
+    Value: !Ref codePipeline
+    Export:
+      Name: !Sub "${project}-${env}-${app}-codePipeline-${AWS::Region}"

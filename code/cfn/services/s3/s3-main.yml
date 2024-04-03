@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn driver template to deploy S3 bucket
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://shochiku-app-dev-us-east-1-239715580977.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path"
+Resources:
+  s3CodePipelineArtifactsBucket:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/s3/s3-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: codepipeline-artifacts
+        s3BucketName: !Sub "${project}-${env}-codepipeline-artifacts-${AWS::Region}-${AWS::AccountId}"
+        s3ObjectOwnership: BucketOwnerPreferred #BucketOwnerEnforced/ObjectWriter/BucketOwnerPreferred
+        s3EnableAcl: no #yes/no
+        s3AccessControl: Private #Private/BucketOwnerFullControl/PublicReadWrite/LogDeliveryWrite/etc..
+        s3EnableBucketEncryption: yes #yes/no 
+        s3KmsKeyArn: ""
+Outputs:
+  s3CodePipelineArtifactsBucket:
+    Description: CodePipelien Artifacts bucket name
+    Value: !Ref s3CodePipelineArtifactsBucket
+    Export:
+      Name: !Sub "${project}-${env}-${app}-s3CodePipelineArtifactsBucket-${AWS::Region}"

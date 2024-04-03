@@ -1,0 +1,40 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn driver template to deploy EC2 key pair
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the author
+  s3ArtifactPath:
+    Type: String
+    Default: "https://genpact-app-uat-us-east-1-546268160168.s3.amazonaws.com/code/cfn/services"
+    Description: Artifact bucket path
+Resources:
+  ec2KeyPair:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${s3ArtifactPath}/ec2/ec2KeyPair/ec2KeyPair-app.yml"
+      Parameters:
+        project: !Ref project
+        env: !Ref env
+        app: ec2KeyPair
+        authorName: uzair
+        ec2KeyPairName: !Sub "${project}-${env}-${app}-${AWS::Region}"
+        ec2KeyPairFormat: pem
+        ec2KeyPairType: rsa
+Outputs:
+  ec2KeyPair:
+    Description: EC2 Key Pair
+    Value: !Ref ec2KeyPair
+    Export:
+      Name: !Sub "${project}-${env}-${app}-ec2KeyPair-${AWS::StackName}-${AWS::Region}"

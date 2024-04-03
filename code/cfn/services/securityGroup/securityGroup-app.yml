@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn template to deploy Security Groups
+Parameters:
+  project:
+    Type: String
+    Description: Project name
+  env:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, qa, uat, prod]
+    Description: Environment name
+  app:
+    Type: String
+    Description: App name
+  authorName:
+    Type: String
+    Description: The name of the owner
+  sgVpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC ID to associate with security groups  
+  sgInternetTrafficIngressCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: The IPv4 CIDR range to allow all incoming internet traffic
+  sgInternetTrafficEgressCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: The IPv4 CIDR range to allow all outgoing internet traffic
+  sgAllowIngressProtocol:
+    Type: String
+    Default: -1
+    Description: The allowed inbound network traffic protocol
+  sgAllowEgressProtocol:
+    Type: String
+    Default: -1
+    Description: The allowed outbound network traffic protocol
+Resources:
+  sgWebServer:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub "${project}-${env}-${app}-webServerSg-${AWS::Region}"
+      VpcId: !Ref sgVpcId
+      Tags:
+        - Key: Name
+          Value: !Sub "${project}-${env}-${app}-webServerSg-${AWS::Region}"
+        - Key: Author
+          Value: !Ref authorName
+        - Key: project
+          Value: !Ref project
+        - Key: environment
+          Value: !Ref env
+        - Key: app
+          Value: !Ref app
+  sgWebServerIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      Description: Allow inbound traffic from internet
+      CidrIp: !Ref sgInternetTrafficIngressCidr
+      GroupId: !Ref sgWebServer
+      IpProtocol: !Ref sgAllowIngressProtocol
+  sgWebServerEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties: 
+      Description: Allow all outbound traffic
+      CidrIp: !Ref sgInternetTrafficEgressCidr
+      GroupId: !Ref sgWebServer    
+      IpProtocol: !Ref sgAllowEgressProtocol
+Outputs: 
+  sgWebServer:
+    Description: Web Server Security Group Id
+    Value: !Ref sgWebServer
+    Export:
+      Name: !Sub "${project}-${env}-${app}-sgWebServer-${AWS::Region}"
